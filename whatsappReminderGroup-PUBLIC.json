@@ -1,0 +1,981 @@
+{
+  "name": "whatsappReminderGroup",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 52 23 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1552,
+        -1008
+      ],
+      "id": "9760d39f-bddc-4c1d-90c5-6afcf40af5ab",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7690b9e9-41f8-4e34-8dba-e53ecb906842",
+              "name": "messageType",
+              "value": "checkin",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1312,
+        -528
+      ],
+      "id": "38aedd1f-0aab-4601-8833-c5875add2f0f",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an intelligent Meeting Assistant for WhatsApp groups.\nGroup Name: {{ $json.GROUP_NAME }}\nMeeting Time: {{ $json.MEETING_TIME }}\nReminder Before: {{ $json['REMINDER_BEFORE(MINS)'] }}\nYour responsibilities:\n1. Monitor meeting information from the connected Google Sheet.\n2. Send WhatsApp messages to each group:\n\nMessage: Meeting Reminder\n* Create a professional and friendly meeting reminder.\n* Mention the meeting title, date, time, and any relevant details.\n* Use appropriate emojis.\n* Make the message clear and concise.\n\n\n\nGuidelines:\n* Always maintain a professional, positive, and helpful tone.\n* Never send duplicate reminders for the same schedule unless there is an update.\n* Keep messages concise and suitable for WhatsApp.\n* Use formatting such as emojis, bullet points, and spacing for readability.\n\n* Ensure all generated content is safe, accurate, and easy to understand.\n\nOutput:\nGenerate separate WhatsApp-ready messages:\nmeeting reminder\nReturn ONLY valid JSON in this format:\n\nIMPORTANT:\nReturn ONLY raw JSON.\n\nDo NOT wrap the JSON in ```json\nDo NOT add explanations.\nDo NOT add any text before or after the JSON.\n\nOutput format:\n\n{\n  \"meeting_reminder\": \"...\",\n \n}\n\n\nDo not include explanations, markdown, or any other text. this is the prompt\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -400,
+        -224
+      ],
+      "id": "8a272d3e-8ff8-49be-b09d-40c6a7c8e8fe",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_WAHA_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "session",
+              "value": "=default"
+            },
+            {
+              "name": "chatId",
+              "value": "={{ $('Get row(s) in sheet2').item.json.GROUP_ID }}@g.us"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -16,
+        -224
+      ],
+      "id": "f1422d0c-43c1-4214-96b5-8b6b35a1d360",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1104,
+        -1008
+      ],
+      "id": "7867f7cb-ad7b-4818-9ca2-ecea0fbc7bf7",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "vVh6emhUughWy6Tc",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -912,
+        -1008
+      ],
+      "id": "e8cd542d-b036-43e1-bae4-7c133bace2f8",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -16
+      ],
+      "id": "8fe3fe7b-8bd2-4f94-bd35-f8abc3cac208",
+      "name": "Azure OpenAI Chat Model",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "C1oxyv2ckcgdDINX",
+          "name": "Azure Open AI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate a WhatsApp check-in reminder for group {{ $json.GROUP_NAME }}.\n\nMembers are reminded to check in on odoo platform.\n\nUse emojis.\nReturn only the message.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -416,
+        -576
+      ],
+      "id": "e2c3d951-1134-469a-a8fc-fefc939c5d66",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        -400
+      ],
+      "id": "367971bb-85f2-4bd9-88b5-b39199e9da42",
+      "name": "Azure OpenAI Chat Model1",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "C1oxyv2ckcgdDINX",
+          "name": "Azure Open AI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_WAHA_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "session",
+              "value": "=default"
+            },
+            {
+              "name": "chatId",
+              "value": "={{ $('Get row(s) in sheet1').item.json.GROUP_ID }}@g.us"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -32,
+        -576
+      ],
+      "id": "225ff4e7-b36f-4ccf-9d22-baca306818be",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate a WhatsApp check-out reminder for group {{ $json.GROUP_NAME }}.\n\nMembers are reminded to check out on odoo platform.\n\nUse emojis.\nReturn only the message.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -256,
+        -992
+      ],
+      "id": "6e6b59e3-21dd-41ae-b127-7abb88168bb0",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        -784
+      ],
+      "id": "1e799ae2-d602-466f-9388-97cc1c3cb636",
+      "name": "Azure OpenAI Chat Model2",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "C1oxyv2ckcgdDINX",
+          "name": "Azure Open AI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_WAHA_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chatId",
+              "value": "={{ $('Get row(s) in sheet3').item.json.GROUP_ID }}@g.us"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "name": "session",
+              "value": "default"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -64,
+        128
+      ],
+      "id": "d0819464-1836-4a4d-8d6a-a0d7fab1f30a",
+      "name": "HTTP Request3"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5 15 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1520,
+        -528
+      ],
+      "id": "35e3c19c-118d-42d9-a200-2f923b6c156d",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1568,
+        -208
+      ],
+      "id": "fa1f1b5e-7abb-4eb7-8083-3adc2820c3dd",
+      "name": "Schedule Trigger2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f8b155dc-24ad-4ce4-9816-fc3408402fb3",
+              "name": "=messageType",
+              "value": "AI Insight",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1312,
+        192
+      ],
+      "id": "87a33645-a3d7-480b-9da7-54f47ae23edf",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dd89d0bc-8188-4e1e-9072-263db4cdd8ff",
+              "name": "messageType ",
+              "value": "checkout",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1296,
+        -1008
+      ],
+      "id": "99ae93ad-00e1-4127-93a9-94b941cca724",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "21435380-6d85-4176-b1bb-11b12b81ca80",
+              "name": "=messageType ",
+              "value": "reminder",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1296,
+        -208
+      ],
+      "id": "a8b55576-27c2-4e73-8e06-c7a9ca0e46ff",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_WAHA_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "session",
+              "value": "=default"
+            },
+            {
+              "name": "chatId",
+              "value": "={{ $('Get row(s) in sheet').item.json.GROUP_ID }}@g.us"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        176,
+        -992
+      ],
+      "id": "a6a3a4f8-1fa4-4926-bbc2-6d7d7dd8e0fc",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are an intelligent AI news broadcaster for WhatsApp groups.\nGroup Name: {{ $('Get row(s) in sheet').item.json.GROUP_NAME }}\n\nDaily AI Insight\n* Generate one interesting AI-related insight, fact, trend, concept, tool, or innovation.\n* The insight may be:\n  * Fun and engaging\n  * Educational\n  * Industry news\n  * AI productivity tips\n  * Interesting AI applications in real life\n* Keep it of about 4-5 lines and easy to understand.\n* Use emojis where appropriate.\n* Ensure that different groups receive different AI insights whenever possible.\n* Avoid repeating the same AI insight across groups on the same day.\n* try to keep the ai insight as a news for changing dynamics in ai related field act as the one who delivers daily news\n\nOutput:\nGenerate separate WhatsApp-ready messages:\n  Daily AI Insight Message\nReturn ONLY valid JSON in this format:\n\nIMPORTANT:\nReturn ONLY raw JSON.\n\nDo NOT wrap the JSON in ```json\nDo NOT add explanations.\nDo NOT add any text before or after the JSON.\n\nOutput format:\n\n\n \"...\"\n\n\n\nDo not include explanations, markdown, or any other text. this is the prompt",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -464,
+        128
+      ],
+      "id": "408bb058-00f1-4a09-a467-e753ab7af827",
+      "name": "AI Agent3"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        320
+      ],
+      "id": "874202b8-f99d-459d-b210-3b7863b78238",
+      "name": "Azure OpenAI Chat Model3",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "C1oxyv2ckcgdDINX",
+          "name": "Azure Open AI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1104,
+        -528
+      ],
+      "id": "acf73d07-e6d4-4382-beba-a0670623e06a",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleApi": {
+          "id": "vVh6emhUughWy6Tc",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -896,
+        -528
+      ],
+      "id": "73dedc9b-1a6c-4842-bd17-c2b1a8a1c08b",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1056,
+        -192
+      ],
+      "id": "a8b99c53-b851-4dee-b9d6-d9cd5815fd65",
+      "name": "Get row(s) in sheet2",
+      "credentials": {
+        "googleApi": {
+          "id": "vVh6emhUughWy6Tc",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 40 14 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1568,
+        192
+      ],
+      "id": "bf633797-3a01-4410-a5a7-2a8d341f75b1",
+      "name": "Schedule Trigger3"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1104,
+        192
+      ],
+      "id": "5a19e53f-9a2c-4641-afbc-382e5317570b",
+      "name": "Get row(s) in sheet3",
+      "credentials": {
+        "googleApi": {
+          "id": "vVh6emhUughWy6Tc",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "20ab7bc7-b769-4ee6-9c3e-5f92b7a3b680",
+              "leftValue": "={{ $now.format('HH:mm') }}",
+              "rightValue": "={{ DateTime.fromFormat($json.MEETING_TIME,'HH:mm') .minus({ minutes: Number($json['REMINDER_BEFORE(MINS)']) }) .toFormat('HH:mm') }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -640,
+        -176
+      ],
+      "id": "799db7ac-2a11-4650-8690-6cf4c696e703",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -800,
+        160
+      ],
+      "id": "44a1707c-2aa0-4002-ae83-514e5407fe5d",
+      "name": "Loop Over Items3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        []
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        []
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        []
+      ]
+    },
+    "Azure OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet3": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Loop Over Items3": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "ea6059c3-f592-42cc-8ff9-2756ef5d36b6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3bfc448dabe6a1847fd8e4443aab6b507e320b64215725f398e2dbbe9f6e6297"
+  },
+  "id": "0zzrpVGoHu0sG7DP",
+  "tags": []
+}

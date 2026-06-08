@@ -24,15 +24,15 @@ Runs completely automatically using scheduled workflows
 Architecture:
 
 Schedule Trigger
-        ↓
+        ->
 Google Sheets
-        ↓
+        ->
 IF Condition
-        ↓
+        ->
 AI Agent
-        ↓
+        ->
 WAHA API
-        ↓
+        ->
 WhatsApp Group
 
 Features:
